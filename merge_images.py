@@ -40,9 +40,9 @@ def insert_image_info(md_file, info_file, output_file):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input_md', default='fm434_all.md')
-    parser.add_argument('--info_md', default='fm434_image_info.md')
-    parser.add_argument('--output_md', default='fm434_final.md')
+    parser.add_argument('--input_md', default='pandoc.md')
+    parser.add_argument('--info_md', default='media_info.md')
+    parser.add_argument('--output_md', default='../../ds/pandoc_final.md')
     args = parser.parse_args()
 
     insert_image_info(args.input_md, args.info_md, args.output_md)
