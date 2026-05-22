@@ -17,10 +17,17 @@ def split_markdown(file_path, output_dir_path=None, max_level=2):
 
     content = path.read_text(encoding='utf-8')
 
+    # 预扫描：查找文件中使用的最小标题级别
+    # 注意：pattern 必须在调用 findall 前定义
+    pattern = re.compile(r'^(#{1,6})\s+(.*)', re.MULTILINE)
+    headings = pattern.findall(content)
+    min_level = min([len(h[0]) for h in headings]) if headings else 1
+    # 如果 min_level > 1，则偏移量为 min_level - 1，使得最小级别变为 1
+    level_offset = min_level - 1
+
     # 转义内容中的 [ 和 ] (使用原始字符串字面量)
     content = content.replace('[', r'\[').replace(']', r'\]')
 
-    pattern = re.compile(r'^(#{1,6})\s+(.*)', re.MULTILINE)
 
     index_stack = [0] * 6
     titles_stack = [""] * 6
@@ -61,18 +68,22 @@ def split_markdown(file_path, output_dir_path=None, max_level=2):
             h_mark, h_title = match.groups()
             h_level = len(h_mark)
 
-            if h_level <= max_level:
+            # 应用偏移量，使最小级别变为 1
+            logical_level = h_level - level_offset
+
+            if logical_level <= max_level:
                 if current_titles:
                     save_section(current_indices, current_titles, current_content)
 
-                index_stack[h_level-1] += 1
-                for i in range(h_level, 6):
+                # 使用逻辑层级更新索引栈
+                index_stack[logical_level-1] += 1
+                for i in range(logical_level, 6):
                     index_stack[i] = 0
 
-                titles_stack[h_level-1] = h_title
+                titles_stack[logical_level-1] = h_title
 
-                current_indices = index_stack[:h_level]
-                current_titles = titles_stack[:h_level]
+                current_indices = index_stack[:logical_level]
+                current_titles = titles_stack[:logical_level]
                 current_content = [line]
             else:
                 current_content.append(line)
