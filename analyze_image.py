@@ -99,10 +99,14 @@ if __name__ == "__main__":
             try:
                 result = analyze_image(img_file)
 
+                # 将 markdown 标题行替换为粗体，防止 split_md.py 切分章节
+                # 将 # Title 替换为 **Title**
+                sanitized_result = re.sub(r'^#+\s+(.*)', r'**\1**', result, flags=re.MULTILINE)
+
                 # 追加写入汇总文档
                 with open(args.output_md, "a", encoding="utf-8") as f:
                     f.write(f"<!-- REVERSE TRANSLATION: {img_file.replace(os.path.sep, '/')} -->\n")
-                    f.write(result + "\n\n")
+                    f.write(sanitized_result + "\n\n")
                     f.write(f"<!-- END OF REVERSE TRANSLATION: {img_file.replace(os.path.sep, '/')} -->\n\n")
                 print(f"已完成: {img_file}")
             except Exception as e:
