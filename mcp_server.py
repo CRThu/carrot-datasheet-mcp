@@ -8,7 +8,13 @@ import os
 from mcp.server.fastmcp import FastMCP
 
 # 初始化 MCP 服务器
-mcp = FastMCP("fm-datasheet-server")
+VERSION = "1.0.0"
+mcp = FastMCP(f"carrot-datasheet-mcp")
+
+@mcp.tool()
+async def get_version() -> str:
+    """获取当前 MCP 服务器版本号"""
+    return VERSION
 
 # 配置数据表存放目录
 DATA_DIR = "ds"
