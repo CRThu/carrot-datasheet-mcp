@@ -46,33 +46,42 @@
 本项目通过一系列脚本处理文档。对于每个新的 datasheet（以 `YourDoc.docx` 为例），请按照以下标准流程在项目根目录下操作：
 
 ### 1. 准备工作区
-在 `build/` 目录下创建一个文件夹，放入您的 `.docx` 文件：
+在 `build/` 目录下创建一个文件夹，放入您的 `.pdf` (或 `.docx`) 文件：
 ```bash
 mkdir build/your-project-name
-# 将 your-doc.docx 放入 build/your-project-name/
+# 将 your-doc.pdf 放入 build/your-project-name/
 cd build/your-project-name
 ```
 
 ### 2. 执行标准处理流程
-请在 `build/your-project-name/` 目录下依次执行以下命令（假设您已配置好环境变量）：
+请在 `build/your-project-name/` 目录下依次执行以下命令：
 
-1.  **转换为 Markdown 并提取图片**：
+1.  **PDF 转 DOCX** (可选，若源文件为 PDF)：
+    *   **推荐方案 (排版还原度高)**：此步骤必须安装 Adobe Acrobat Pro，普通版 Acrobat Reader 不支持此 COM 接口。
+        ```bash
+        uv run ../../pdf2docx_acrobat.py "your-doc.pdf" "your-doc.docx"
+        ```
+    *   **替代方案 (无需 Acrobat)**：使用 `pdf2docx` 库（排版还原度可能较低，无法进行复杂表格与章节结构的完美还原）：
+        ```bash
+        uv run ../../pdf2docx_pdf2docx.py "your-doc.pdf" "your-doc.docx"
+        ```
+2.  **转换为 Markdown 并提取图片**：
     ```bash
     pandoc "your-doc.docx" -t markdown -o "pandoc.md" --wrap=none --extract-media="."
     ```
-2.  **处理图片（EMF 转 PNG）**：
+3.  **处理图片（EMF 转 PNG）**：
     ```bash
     uv run ../../convert_emf.py
     ```
-3.  **多模态图片解析**（此步会调用 Gemini，请确保 `.env` 配置正确）：
+4.  **多模态图片解析**（此步会调用 Gemini，请确保 `.env` 配置正确）：
     ```bash
     uv run ../../analyze_image.py
     ```
-4.  **合并解析结果到主文档**：
+5.  **合并解析结果到主文档**：
     ```bash
     uv run ../../merge_images.py --input_md="pandoc.md" --info_md="media_info.md" --output_md="../../ds/final_doc.md"
     ```
-5.  **按标题层级切分文档**（生成可被 MCP 读取的碎片化章节）：
+6.  **按标题层级切分文档**（生成可被 MCP 读取的碎片化章节）：
     ```bash
     uv run ../../split_md.py ../../ds/final_doc.md --level 2
     ```
@@ -123,25 +132,33 @@ cd build/your-project-name
 
 本项目包含多个处理脚本，您可以直接通过 `uv run` 调用。
 
-### 1. `convert_emf.py`
+### 1. `pdf2docx_acrobat.py`
+使用 Adobe Acrobat Pro 将 PDF 转换为 DOCX（依赖 COM 接口）。
+*   **用法**：`uv run pdf2docx_acrobat.py <input.pdf> <output.docx>`
+
+### 2. `pdf2docx_pdf2docx.py`
+使用 `pdf2docx` 库将 PDF 转换为 DOCX（无需 Acrobat，但排版还原度可能较低）。
+*   **用法**：`uv run pdf2docx_pdf2docx.py <input.pdf> <output.docx>`
+
+### 3. `convert_emf.py`
 将 `media/` 目录下的所有 EMF 矢量图批量转换为 PNG。
 *   **参数**：无（自动处理当前目录下的 `media` 文件夹）。
 *   **用法**：`uv run convert_emf.py`
 
-### 2. `analyze_image.py`
+### 4. `analyze_image.py`
 遍历媒体目录，调用 Gemini 对硬件图片进行结构化解析。
 *   `--media_dir` (默认 `media`): 图片存放目录。
 *   `--output_md` (默认 `media_info.md`): 解析结果的输出文件。
 *   **用法**：`uv run analyze_image.py --media_dir "media" --output_md "output.md"`
 
-### 3. `merge_images.py`
+### 5. `merge_images.py`
 将解析好的图片 Markdown 片段合并回主文档。
 *   `--input_md` (默认 `pandoc.md`): 原始 Markdown 文档路径。
 *   `--info_md` (默认 `media_info.md`): 由 `analyze_image.py` 生成的解析信息文件。
 *   `--output_md` (默认 `../../ds/pandoc_final.md`): 合并后的最终输出路径。
 *   **用法**：`uv run merge_images.py --input_md "doc.md" --info_md "info.md" --output_md "final.md"`
 
-### 4. `split_md.py`
+### 6. `split_md.py`
 将合并后的 Markdown 文件按标题层级切分为碎片化的小文件，提升检索命中率。
 *   `file` (位置参数): 待切分的 Markdown 文件路径。
 *   `--output` (可选): 指定输出目录。
