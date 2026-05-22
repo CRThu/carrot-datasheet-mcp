@@ -1,14 +1,14 @@
 # Build script for data sheets
 # Requires: pandoc, uv
 
-# --- 方案 A: 使用 pdf2md_pymupdf4llm (推荐，无需 Acrobat, pandoc) ---
+# --- 方案 A: 使用 pdf2md_pymupdf4llm (无需 Acrobat, pandoc) ---
 cd build/your-project-name
 uv run ../../pdf2md_pymupdf4llm.py "your-doc.pdf" "datasheet.md" "media"
 uv run ../../analyze_image.py --media_dir "media"
 uv run ../../merge_images.py --input_md="datasheet.md" --output_md="../../ds/your-doc.md"
 uv run ../../split_md.py ../../ds/your-doc.md --level 2
 
-# --- 方案 B: 使用 Acrobat + Pandoc ---
+# --- 方案 B: 使用 Acrobat + Pandoc (推荐)---
 # Process NTAG224
 cd build/ntag224
 uv run ../../pdf2docx_acrobat.py "NT2H2421G0.pdf" "NT2H2421G0.docx"

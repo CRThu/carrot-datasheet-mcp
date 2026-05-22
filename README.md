@@ -59,14 +59,14 @@ cd build/your-project-name
 
 1.  **转换为 Markdown**：
 
-方案 V2：高效流水线 (PDF -> Markdown，推荐)
+方案 V2：高效流水线 (PDF -> Markdown)
 使用 `pdf2md_pymupdf4llm.py`，无需 Acrobat 和 pandoc，转换效果极佳。
 
 ```bash
 uv run ../../pdf2md_pymupdf4llm.py "your-doc.pdf" "pandoc.md" "media"
 ```
 
-方案 V1：标准流水线 (PDF -> DOCX -> Markdown)
+方案 V1：标准流水线 (PDF -> DOCX -> Markdown，推荐)
 此方案适合需要极高排版还原度的情况（依赖 Adobe Acrobat和pandoc）。
 
 PDF 转 DOCX： 

@@ -10,6 +10,7 @@ import os
 import glob
 import time
 import argparse
+import re
 from google import genai
 from google.genai import types
 from PIL import Image
