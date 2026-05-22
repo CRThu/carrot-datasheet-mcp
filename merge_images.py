@@ -19,7 +19,10 @@ def insert_image_info(md_file, info_file, output_file):
     # 替换 markdown 中的 ![](./media/***.emf)
     # 替换规则：寻找 ./media/ 之后的文件名，并在 info_file 中寻找对应的块
     def replace_func(match):
-        image_path = match.group(1) # 获取 media/xxx.png
+        # 匹配出来的路径，去除可能存在的 ./ 前缀
+        raw_path = match.group(1)
+        image_path = raw_path.replace('./', '')
+
         # emf 格式转 png 格式的查找
         if image_path.endswith('.emf'):
             image_path = image_path.replace('.emf', '.png')
@@ -31,8 +34,8 @@ def insert_image_info(md_file, info_file, output_file):
             print(f"No info found for {image_path}")
             return match.group(0)
 
-    # 匹配 ![](./media/***.emf) 或 ![](./media/***.png)
-    new_md_content = re.sub(r'!\[.*?\]\(\./(media/.*?)\)', replace_func, md_content)
+    # 修改正则：支持 ![](/media/...) 和 ![](\./media/...) 两种格式
+    new_md_content = re.sub(r'!\[.*?\]\((?:\./)?(media/.*?)\)', replace_func, md_content)
 
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(new_md_content)
