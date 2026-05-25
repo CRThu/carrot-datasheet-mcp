@@ -2,6 +2,7 @@
 # dependencies = ["pymupdf4llm"]
 # ///
 
+import pymupdf
 import pymupdf4llm
 import argparse
 import os
@@ -12,7 +13,13 @@ def convert_pdf_to_md(pdf_path, output_md, media_dir):
     os.makedirs(media_dir, exist_ok=True)
 
     # Convert PDF to MD
-    md_text = pymupdf4llm.to_markdown(pdf_path, write_images=True, image_path=media_dir)
+    pymupdf4llm.use_layout(False)
+    
+    doc = pymupdf.open(pdf_path)
+
+    # TOC-driven: use the document's table of contents
+    toc_headers = pymupdf4llm.TocHeaders(doc)
+    md_text = pymupdf4llm.to_markdown(doc, write_images=True, image_path=media_dir, hdr_info=toc_headers, show_progress = True)
 
     # Write the markdown file
     with open(output_md, "w", encoding="utf-8") as f:
