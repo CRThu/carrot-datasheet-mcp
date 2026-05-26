@@ -4,6 +4,7 @@
 # --- 方案 A: 使用 pdf2md_pymupdf4llm (无需 Acrobat, pandoc) ---
 cd build/your-project-name
 uv run ../../pdf2md_pymupdf4llm.py "your-doc.pdf" "datasheet.md" "media"
+uv run ../../convert_emf.py
 uv run ../../analyze_image.py --media_dir "media"
 uv run ../../merge_images.py --input_md="datasheet.md" --output_md="../../ds/your-doc.md"
 uv run ../../split_md.py ../../ds/your-doc.md --level 2

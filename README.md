@@ -53,20 +53,19 @@ mkdir build/your-project-name
 cd build/your-project-name
 ```
 
-## 文档构建工作流
-
-本项目构建了一套“转换 -> 解析 -> 合并 -> 切分”的完整工作流。您可以根据环境选择不同的转换路径。
+### 2. 手动转换步骤
+您可以根据环境选择不同的转换路径。
 
 1.  **转换为 Markdown**：
 
-方案 V2：高效流水线 (PDF -> Markdown)
+方案 V2：高效流水线 (PDF -> Markdown，推荐)
 使用 `pdf2md_pymupdf4llm.py`，无需 Acrobat 和 pandoc，转换效果极佳。
 
 ```bash
 uv run ../../pdf2md_pymupdf4llm.py "your-doc.pdf" "pandoc.md" "media"
 ```
 
-方案 V1：标准流水线 (PDF -> DOCX -> Markdown，推荐)
+方案 V1：标准流水线 (PDF -> DOCX -> Markdown)
 此方案适合需要极高排版还原度的情况（依赖 Adobe Acrobat和pandoc）。
 
 PDF 转 DOCX： 
@@ -87,7 +86,7 @@ pandoc "your-doc.docx" -t markdown -o "pandoc.md" --wrap=none --extract-media=".
     
 2.  **处理图片（EMF 转 PNG，若有）**：
 ```bash
-uv run ../../convert_emf.py
+uv run ../../convert_emf.py --media_dir "media"
 ```
 3.  **多模态图片解析**（此步会调用 Gemini，请确保 `.env` 配置正确）：
 ```bash
@@ -166,8 +165,8 @@ uv run ../../split_md.py ../../ds/final_doc.md --level 2
 
 ### 4. `convert_emf.py`
 将 `media/` 目录下的所有 EMF 矢量图批量转换为 PNG。
-*   **参数**：无（自动处理当前目录下的 `media` 文件夹）。
-*   **用法**：`uv run convert_emf.py`
+*   `--media_dir` (默认 `media`): 图片存放目录。
+*   **用法**：`uv run convert_emf.py --media_dir "media"`
 
 ### 5. `analyze_image.py`
 遍历媒体目录，调用 Gemini 对硬件图片进行结构化解析。

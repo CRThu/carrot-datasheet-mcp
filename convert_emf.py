@@ -8,6 +8,7 @@
 
 import os
 import sys
+import argparse
 from pathlib import Path
 
 # 尝试导入必要的库，如果不存在则提示安装
@@ -64,6 +65,8 @@ def convert_media_folder(folder_path):
     print(f"失败: {fail_count}")
 
 if __name__ == "__main__":
-    # 默认处理当前目录下的 media 文件夹
-    target_dir = os.path.join(os.getcwd(), "media")
-    convert_media_folder(target_dir)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--media_dir', default='media')
+    args = parser.parse_args()
+    
+    convert_media_folder(args.media_dir)
