@@ -28,10 +28,11 @@ async def test():
     # 只打印前 50 个字符避免输出过长
     print(f"内容预览: {content[:50]}...")
 
-    if chapters and isinstance(chapters, list) and len(chapters) > 0 and "提示" not in chapters[0]:
-        chapter_target = chapters[0]
-        print(f"\n--- 测试 read_chapter ({target} -> {chapter_target}) ---")
-        chap_content = await read_chapter(target, chapter_target)
+    # 尝试测试第一个手册的第二个章节（如果存在）
+    if chapters and len(chapters) >= 1:
+        # 使用索引 0 测试
+        print(f"\n--- 测试 read_chapter (index 0) ---")
+        chap_content = await read_chapter(target, 0)
         print(f"内容预览: {chap_content[:50]}...")
     else:
         print("\n跳过 read_chapter 测试 (未找到分章节目录或手册无章节)")

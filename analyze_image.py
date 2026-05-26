@@ -70,8 +70,8 @@ def analyze_image(image_path, max_retries=10):
     for attempt in range(max_retries):
         try:
             response = client.models.generate_content(
-                model='gemini-3.1-flash-lite',
-                #model='gemma-4-31b-it',
+                #model='gemini-3.1-flash-lite',
+                model='gemma-4-31b-it',
                 contents=[prompt, img]
             )
             return response.text
