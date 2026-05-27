@@ -188,6 +188,12 @@ uv run ../../split_md.py ../../ds/final_doc.md --level 2
 *   `--level` (默认 `2`): 按几级标题进行切分（例如：2 表示按 H2 标题切分）。
 *   **用法**：`uv run split_md.py path/to/doc.md --level 2`
 
+### 8. `get_toc.py`
+该脚本用于解析 Markdown 或 PDF 文件，并以树状结构输出其目录（Table of Contents）。
+*   `<文件路径>`：要解析的目标文件路径（支持 `.md` 或 `.pdf`）。
+*   `-l` / `--level` (可选): 指定输出的目录最大层级。
+*   **用法**：`uv run get_toc.py <文件路径> [选项]`
+
 ## 目录结构
 *   `/ds/`: 存放切分好的 Markdown 章节，MCP 服务直接读取该目录。
 *   `/build/`: 工作空间，每个子目录对应一个待处理文档。
