@@ -10,7 +10,7 @@ import re
 from mcp.server.fastmcp import FastMCP
 
 # 初始化 MCP 服务器
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 mcp = FastMCP(f"carrot-datasheet-mcp")
 
 @mcp.tool()
@@ -46,7 +46,7 @@ async def list_chapters(datasheet_name: str) -> list[str]:
 
 @mcp.tool()
 async def read_datasheet(datasheet_name: str, start_line: int = 1, line_limit: int = 1000) -> dict:
-    """读取指定 datasheet 的内容。返回结构化 JSON。"""
+    """读取指定 datasheet 的全部或部分内容。警告：若文档体积巨大，建议仅在无TOC划分的文档中使用此方法，优先通过 search 或 read_chapter 获取具体片段。"""
     filepath = os.path.join(DATA_DIR, f"{datasheet_name}.md")
     if not os.path.exists(filepath):
         return {"error": f"手册文件 {datasheet_name}.md 不存在"}
@@ -78,7 +78,7 @@ async def read_datasheet(datasheet_name: str, start_line: int = 1, line_limit: i
 
 @mcp.tool()
 async def read_chapter(datasheet_name: str, index: int, start_line: int = 1, line_limit: int = 50) -> dict:
-    """通过章节索引(从0开始)读取指定手册的特定章节内容。支持按行分页读取。"""
+    """通过章节索引读取指定手册的特定章节内容。适用于标题已反映章节功能或在搜索确认位置后，深入理解该模块的详细逻辑。"""
     # 获取所有章节列表
     chapters = await list_chapters(datasheet_name)
     
@@ -129,7 +129,7 @@ async def search_in_datasheet(
     page_size: int = 20,
     context_length: int = 200
 ) -> dict:
-    """在指定 datasheet 中搜索关键字。返回包含分页信息和匹配结果的 JSON 结构。"""
+    """在 datasheet 中通过关键字搜索定位。用于初步查找寄存器、功能描述或协议细节，是查找信息的首选工具。"""
     
     all_matches = []
     
