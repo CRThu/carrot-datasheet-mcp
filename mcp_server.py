@@ -10,7 +10,7 @@ import re
 from mcp.server.fastmcp import FastMCP
 
 # 初始化 MCP 服务器
-VERSION = "1.2.1"
+VERSION = "1.3.1"
 mcp = FastMCP(f"carrot-datasheet-mcp")
 
 @mcp.tool()
@@ -76,23 +76,17 @@ async def read_datasheet(datasheet_name: str, start_line: int = 1, line_limit: i
     except Exception as e:
         return {"error": str(e)}
 
-@mcp.tool()
-async def read_chapter(datasheet_name: str, index: int, start_line: int = 1, line_limit: int = 50) -> dict:
-    """通过章节索引读取指定手册的特定章节内容。适用于标题已反映章节功能或在搜索确认位置后，深入理解该模块的详细逻辑。"""
-    # 获取所有章节列表
+# 辅助函数，封装通用的读取逻辑
+async def _get_chapter_content(datasheet_name: str, index: int, start_line: int, line_limit: int) -> dict:
     chapters = await list_chapters(datasheet_name)
-    
     if not chapters:
-        return {"error": f"手册 {datasheet_name} 没有分章节目录，或无法找到。"}
-    
-    # 检查索引是否有效
-    if 0 <= index < len(chapters):
-        chapter_name = chapters[index]
-    else:
+        return {"error": f"手册 {datasheet_name} 没有分章节目录"}
+    if not (0 <= index < len(chapters)):
         return {"error": f"索引 {index} 超出范围 (0-{len(chapters)-1})"}
-
+    
+    chapter_name = chapters[index]
     filepath = os.path.join(DATA_DIR, datasheet_name, f"{chapter_name}.md")
-
+    
     if not os.path.exists(filepath):
         return {"error": f"章节文件 {chapter_name}.md 不存在"}
         
@@ -120,6 +114,34 @@ async def read_chapter(datasheet_name: str, index: int, start_line: int = 1, lin
             }
     except Exception as e:
         return {"error": str(e)}
+
+@mcp.tool()
+async def read_chapters(datasheet_name: str, indices_str: str, start_line: int = 1, line_limit: int = 50) -> dict:
+    """通过章节索引读取指定手册的特定章节内容。适用于标题已反映章节功能或在搜索确认位置后，深入理解该模块的详细逻辑。indices_str 支持单个索引 '1'，或批量格式，如 '1,2,3'、'10-15' 或 '1,3,10-12'。"""
+    indices = set()
+    try:
+        if isinstance(indices_str, int):
+            indices.add(indices_str)
+        else:
+            for part in str(indices_str).split(','):
+                if '-' in part:
+                    s, e = map(int, part.split('-'))
+                    indices.update(range(s, e + 1))
+                else:
+                    indices.add(int(part))
+    except ValueError:
+        return {"error": "无效的索引格式，请使用 '1' 或 '1,2,3' 或 '10-15' 格式"}
+    
+    sorted_indices = sorted(list(indices))
+    
+    results = {}
+    for idx in sorted_indices:
+        content = await _get_chapter_content(datasheet_name, idx, start_line, line_limit)
+        # 以章节名作为Key，如果出错则用索引作为Key记录错误
+        key = content.get("chapter_name", f"index_{idx}")
+        results[key] = content
+        
+    return results
 
 @mcp.tool()
 async def search_in_datasheet(
