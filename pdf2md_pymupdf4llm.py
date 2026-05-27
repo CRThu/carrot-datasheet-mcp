@@ -9,11 +9,41 @@ import os
 import re
 
 def normalize_title(title):
-    """去除 Markdown 标记和格式干扰，用于和 PDF TOC 进行精确匹配"""
-    # 去除粗体、斜体标记
-    t = re.sub(r'[\*\*_]{1,3}', '', title)
-    # 去除多余空格和特殊空白字符
-    return t.strip()
+    """
+    通用归一化方案：
+    将标题转化为纯粹的字母数字序列，彻底忽略空格、换行、标点和Markdown符号。
+    """
+    # 1. 转小写
+    t = title.lower()
+    # 2. 剔除所有非字母数字字符（包括Markdown的#、*、_，以及PDF中的[2]、/等）
+    t = re.sub(r'[^a-z0-9]', '', t)
+    return t
+
+def filter_redundant_headers(md_text, valid_titles):
+    """根据归一化后的字符串包含关系过滤冗余标题"""
+    # 预先生成 TOC 的归一化列表
+    normalized_toc = [normalize_title(t) for t in valid_titles]
+    
+    final_lines = []
+    for line in md_text.splitlines():
+        match = re.match(r'^(#+)\s+(.*)', line)
+        if match:
+            _, title = match.groups()
+            norm_title = normalize_title(title)
+            
+            # 检查 TOC 中的任何一个标题是否‘包含’了当前 MD 标题的归一化字符串
+            # 这样即使 MD 标题因为换行被截断，只要它存在于 TOC 完整标题中，就匹配成功
+            is_valid = any(toc_item and norm_title in toc_item for toc_item in normalized_toc)
+            
+            if not is_valid:
+                # 降级：去掉标题标记符，保留内容
+                clean_title = re.sub(r'[\*\*_]{1,3}', '', title).strip()
+                final_lines.append(clean_title) 
+            else:
+                final_lines.append(line)
+        else:
+            final_lines.append(line)
+    return "\n".join(final_lines)
 
 def convert_pdf_to_md(pdf_path, output_md, media_dir):
     # Ensure directories exist
@@ -27,33 +57,24 @@ def convert_pdf_to_md(pdf_path, output_md, media_dir):
 
     # 1. 准备目录过滤数据
     toc = doc.get_toc()
-    valid_titles = {normalize_title(item[1]) for item in toc}
+    valid_titles = {item[1] for item in toc}
 
     # TOC-driven: use the document's table of contents
     toc_headers = pymupdf4llm.TocHeaders(doc)
-    md_text = pymupdf4llm.to_markdown(doc, write_images=True, image_path=media_dir, hdr_info=toc_headers, show_progress = True)
+    md_text = pymupdf4llm.to_markdown(
+        doc, 
+        write_images=True, 
+        image_path=media_dir, 
+        hdr_info=toc_headers, 
+        show_progress=True
+    )
 
     # 3. 后处理：强制清理冗余的标题
-    # 将转换出的 markdown 按行处理，如果标题不在 valid_titles 中，则将其降级为普通文本
-    final_lines = []
-    for line in md_text.splitlines():
-        # 检测是否是 Markdown 标题行
-        match = re.match(r'^(#+)\s+(.*)', line)
-        if match:
-            hashes, title = match.groups()
-            norm_title = normalize_title(title)
-            # 如果该标题不在 PDF 原生 TOC 中，则降级为正文
-            if norm_title not in valid_titles:
-                # 简单降级：去掉标题标记符，保留内容
-                final_lines.append(norm_title) 
-            else:
-                final_lines.append(line) # 保留有效标题
-        else:
-            final_lines.append(line)
+    md_text = filter_redundant_headers(md_text, valid_titles)
 
     # Write the cleaned markdown file
     with open(output_md, "w", encoding="utf-8") as f:
-        f.write("\n".join(final_lines))
+        f.write(md_text)
 
     print(f"Successfully converted {pdf_path} to {output_md} with TOC filtering.")
     print(f"Images saved in {media_dir}")
