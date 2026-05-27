@@ -94,7 +94,7 @@ uv run ../../analyze_image.py --media_dir "media"
 ```
 4.  **合并解析结果到主文档**：
 ```bash
-uv run ../../merge_images.py --input_md="pandoc.md" --output_md="../../ds/final_doc.md"
+uv run ../../merge_images.py --input_md="pandoc.md" --info_md="media_info.md" --output_md="../../ds/final_doc.md"
 ```
 5.  **按标题层级切分文档**：
 ```bash

@@ -11,17 +11,15 @@ def insert_image_info(md_file, info_file, output_file):
         info_content = f.read()
 
     # 将生成的图片信息按图片名分割
-    # 假设每个块以 <!-- REVERSE TRANSLATION: media/XXX.png --> 开头
-    # 且以 <!-- END OF REVERSE TRANSLATION: media/XXX.png --> 结尾
-    pattern = re.compile(r'<!-- REVERSE TRANSLATION: (media/.*?) -->(.*?)<!-- END OF REVERSE TRANSLATION: \1 -->', re.DOTALL)
-    blocks = {match.group(1): match.group(0) for match in pattern.finditer(info_content)}
+    # 假设每个块以 <!-- REVERSE TRANSLATION: path/to/media/XXX.png --> 开头
+    # 且以 <!-- END OF REVERSE TRANSLATION: path/to/media/XXX.png --> 结尾
+    pattern = re.compile(r'<!-- REVERSE TRANSLATION: (.*?/media/.*?) -->(.*?)<!-- END OF REVERSE TRANSLATION: \1 -->', re.DOTALL)
+    blocks = {match.group(1): match.group(2) for match in pattern.finditer(info_content)}
 
-    # 替换 markdown 中的 ![](./media/***.emf)
-    # 替换规则：寻找 ./media/ 之后的文件名，并在 info_file 中寻找对应的块
+    # 替换 markdown 中的 ![](...)
     def replace_func(match):
         # 匹配出来的路径，去除可能存在的 ./ 前缀
-        raw_path = match.group(1)
-        image_path = raw_path.replace('./', '')
+        image_path = match.group(1).replace('./', '')
 
         # emf 格式转 png 格式的查找
         if image_path.endswith('.emf'):
@@ -34,8 +32,8 @@ def insert_image_info(md_file, info_file, output_file):
             print(f"No info found for {image_path}")
             return match.group(0)
 
-    # 修改正则：支持 ![](/media/...) 和 ![](\./media/...) 两种格式
-    new_md_content = re.sub(r'!\[.*?\]\((?:\./)?(media/.*?)\)', replace_func, md_content)
+    # 支持 ![](/path/to/media/...)
+    new_md_content = re.sub(r'!\[.*?\]\((.*?/media/.*?)\)', replace_func, md_content)
 
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(new_md_content)
