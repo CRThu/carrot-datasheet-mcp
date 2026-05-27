@@ -24,20 +24,22 @@ async def test():
     print(f"章节列表: {chapters}")
 
     print(f"\n--- 测试 read_datasheet ({target}) ---")
-    content = await read_datasheet(target)
-    # 只打印前 50 个字符避免输出过长
-    print(f"内容预览: {content[:50]}...")
+    content_res = await read_datasheet(target, start_line=1, line_limit=5)
+    print(f"内容预览: {content_res.get('content', '')[:50]}...")
+    print(f"分页信息: {content_res.get('page_info')}")
 
     # 尝试测试第一个手册的第二个章节（如果存在）
     if chapters and len(chapters) >= 1:
         # 使用索引 0 测试
         print(f"\n--- 测试 read_chapter (index 0) ---")
-        chap_content = await read_chapter(target, 0)
-        print(f"内容预览: {chap_content[:50]}...")
+        chap_res = await read_chapter(target, 0, start_line=1, line_limit=5)
+        print(f"内容预览: {chap_res.get('content', '')[:50]}...")
+        print(f"分页信息: {chap_res.get('page_info')}")
         
         # 测试 search_in_datasheet
         print(f"\n--- 测试 search_in_datasheet (查询第一章的内容) ---")
         # 简单取一下第一章的一小部分文本进行测试
+        chap_content = chap_res.get('content', '')
         search_query = chap_content[10:20].strip()
         if search_query:
             print(f"搜索查询: '{search_query}'")
