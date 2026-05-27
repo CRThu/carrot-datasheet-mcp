@@ -6,7 +6,7 @@
 
 import asyncio
 import os
-from mcp_server import list_datasheets, list_chapters, read_datasheet, read_chapter
+from mcp_server import list_datasheets, list_chapters, read_datasheet, read_chapter, search_in_datasheet
 
 async def test():
     print("--- 测试 list_datasheets ---")
@@ -34,6 +34,19 @@ async def test():
         print(f"\n--- 测试 read_chapter (index 0) ---")
         chap_content = await read_chapter(target, 0)
         print(f"内容预览: {chap_content[:50]}...")
+        
+        # 测试 search_in_datasheet
+        print(f"\n--- 测试 search_in_datasheet (查询第一章的内容) ---")
+        # 简单取一下第一章的一小部分文本进行测试
+        search_query = chap_content[10:20].strip()
+        if search_query:
+            print(f"搜索查询: '{search_query}'")
+            # 新的接口返回 dict
+            search_result = await search_in_datasheet(target, search_query, page=1, page_size=20)
+            import json
+            print(f"搜索结果 (JSON):\n{json.dumps(search_result, indent=2, ensure_ascii=False)}")
+        else:
+            print("搜索查询为空，跳过测试。")
     else:
         print("\n跳过 read_chapter 测试 (未找到分章节目录或手册无章节)")
 

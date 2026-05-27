@@ -6,6 +6,7 @@
 
 import os
 import itertools
+import re
 from mcp.server.fastmcp import FastMCP
 
 # 初始化 MCP 服务器
@@ -93,6 +94,68 @@ async def read_chapter(datasheet_name: str, index: int) -> str:
             return f.read()
     except Exception as e:
         return f"读取文件时发生错误：{str(e)}"
+
+@mcp.tool()
+async def search_in_datasheet(
+    datasheet_name: str,
+    query: str,
+    page: int = 1,
+    page_size: int = 20,
+    context_length: int = 200
+) -> dict:
+    """在指定 datasheet 中搜索关键字。返回包含分页信息和匹配结果的 JSON 结构。"""
+    
+    all_matches = []
+    
+    # 确定搜索路径
+    dir_path = os.path.join(DATA_DIR, datasheet_name)
+    file_path = os.path.join(DATA_DIR, f"{datasheet_name}.md")
+    
+    files_to_search = []
+    if os.path.isdir(dir_path):
+        # It's a directory, search all .md files
+        for f in sorted(os.listdir(dir_path)):
+            if f.endswith(".md"):
+                files_to_search.append((f.rsplit('.', 1)[0], os.path.join(dir_path, f)))
+    elif os.path.exists(file_path):
+        # It's a single file
+        files_to_search.append((datasheet_name, file_path))
+    else:
+        return {"error": f"手册 {datasheet_name} 不存在。"}
+    
+    # 执行搜索并收集所有匹配
+    for name, path in files_to_search:
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read()
+                
+            for match in re.finditer(re.escape(query), content, re.IGNORECASE):
+                start = max(0, match.start() - context_length)
+                end = min(len(content), match.end() + context_length)
+                
+                context = content[start:end].replace('\n', ' ')
+                
+                all_matches.append({
+                    "chapter": name,
+                    "context": f"...{context}..."
+                })
+        except Exception as e:
+            continue
+            
+    # 计算分页
+    total_matches = len(all_matches)
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+    paged_results = all_matches[start_idx:end_idx]
+    
+    return {
+        "query": query,
+        "total_matches": total_matches,
+        "page": page,
+        "page_size": page_size,
+        "returned_matches": len(paged_results),
+        "results": paged_results
+    }
 
 if __name__ == "__main__":
     mcp.run()
