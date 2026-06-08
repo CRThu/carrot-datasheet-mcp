@@ -51,8 +51,6 @@ def convert_pdf_to_md(pdf_path, output_md, media_dir):
     os.makedirs(media_dir, exist_ok=True)
 
     # Convert PDF to MD
-    pymupdf4llm.use_layout(False)
-    
     doc = pymupdf.open(pdf_path)
 
     # 1. 准备目录过滤数据
@@ -60,6 +58,7 @@ def convert_pdf_to_md(pdf_path, output_md, media_dir):
     valid_titles = {item[1] for item in toc}
 
     # TOC-driven: use the document's table of contents
+    pymupdf4llm.use_layout(False)
     toc_headers = pymupdf4llm.TocHeaders(doc)
     md_text = pymupdf4llm.to_markdown(
         doc, 
@@ -70,13 +69,15 @@ def convert_pdf_to_md(pdf_path, output_md, media_dir):
     )
 
     # 3. 后处理：强制清理冗余的标题
-    md_text = filter_redundant_headers(md_text, valid_titles)
+    if len(toc) > 0:
+        md_text = filter_redundant_headers(md_text, valid_titles)
+        print("TOC filtering...")
 
     # Write the cleaned markdown file
     with open(output_md, "w", encoding="utf-8") as f:
         f.write(md_text)
 
-    print(f"Successfully converted {pdf_path} to {output_md} with TOC filtering.")
+    print(f"Successfully converted {pdf_path} to {output_md}.")
     print(f"Images saved in {media_dir}")
 
 if __name__ == "__main__":
