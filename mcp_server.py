@@ -10,7 +10,7 @@ import re
 from mcp.server.fastmcp import FastMCP
 
 # 初始化 MCP 服务器
-VERSION = "1.3.1"
+VERSION = "1.3.2"
 mcp = FastMCP(f"carrot-datasheet-mcp")
 
 @mcp.tool()
@@ -77,18 +77,12 @@ async def read_datasheet(datasheet_name: str, start_line: int = 1, line_limit: i
         return {"error": str(e)}
 
 # 辅助函数，封装通用的读取逻辑
-async def _get_chapter_content(datasheet_name: str, index: int, start_line: int, line_limit: int) -> dict:
-    chapters = await list_chapters(datasheet_name)
-    if not chapters:
-        return {"error": f"手册 {datasheet_name} 没有分章节目录"}
-    if not (0 <= index < len(chapters)):
-        return {"error": f"索引 {index} 超出范围 (0-{len(chapters)-1})"}
-    
-    chapter_name = chapters[index]
-    filepath = os.path.join(DATA_DIR, datasheet_name, f"{chapter_name}.md")
+async def _read_chapter_file(datasheet_name: str, chapter_filename: str, start_line: int, line_limit: int) -> dict:
+    """读取指定路径的章节文件内容"""
+    filepath = os.path.join(DATA_DIR, datasheet_name, f"{chapter_filename}.md")
     
     if not os.path.exists(filepath):
-        return {"error": f"章节文件 {chapter_name}.md 不存在"}
+        return {"error": f"章节文件 {chapter_filename}.md 不存在"}
         
     try:
         with open(filepath, "r", encoding="utf-8") as f:
@@ -103,7 +97,7 @@ async def _get_chapter_content(datasheet_name: str, index: int, start_line: int,
             has_more = end < total_lines
             
             return {
-                "chapter_name": chapter_name,
+                "chapter_name": chapter_filename,
                 "content": "".join(selected_lines),
                 "page_info": {
                     "current_start_line": start_line,
@@ -117,31 +111,51 @@ async def _get_chapter_content(datasheet_name: str, index: int, start_line: int,
 
 @mcp.tool()
 async def read_chapters(datasheet_name: str, indices_str: str, start_line: int = 1, line_limit: int = 50) -> dict:
-    """通过章节索引读取指定手册的特定章节内容。适用于标题已反映章节功能或在搜索确认位置后，深入理解该模块的详细逻辑。indices_str 支持单个索引 '1'，或批量格式，如 '1,2,3'、'10-15' 或 '1,3,10-12'。"""
-    indices = set()
-    try:
-        if isinstance(indices_str, int):
-            indices.add(indices_str)
-        else:
-            for part in str(indices_str).split(','):
-                if '-' in part:
-                    s, e = map(int, part.split('-'))
-                    indices.update(range(s, e + 1))
-                else:
-                    indices.add(int(part))
-    except ValueError:
-        return {"error": "无效的索引格式，请使用 '1' 或 '1,2,3' 或 '10-15' 格式"}
+    """通过章节号（如 '1' 或 '1.1'）读取指定手册的特定章节。支持逗号分隔批量查找，如 '1,1.1,1.2'。"""
     
-    sorted_indices = sorted(list(indices))
+    # 1. 获取所有章节名列表
+    all_chapters = await list_chapters(datasheet_name)
+    if not all_chapters:
+        return {"error": f"手册 {datasheet_name} 没有找到分章节目录"}
+    
+    # 2. 解析用户传入的章节号字符串，仅支持逗号分隔
+    requested_ids = [cid.strip() for cid in str(indices_str).split(',') if cid.strip()]
     
     results = {}
-    for idx in sorted_indices:
-        content = await _get_chapter_content(datasheet_name, idx, start_line, line_limit)
-        # 以章节名作为Key，如果出错则用索引作为Key记录错误
-        key = content.get("chapter_name", f"index_{idx}")
-        results[key] = content
+    
+    # 3. 匹配并读取
+    for cid in requested_ids:
+        # 在章节列表中查找：章节名格式为 [datasheet].[id].[title]
+        # 使用正则表达式精确匹配第二个方括号内的内容 cid
+        match = None
+        for ch in all_chapters:
+            # 文件名结构: [datasheet].[id].[title]
+            # 切分：['', 'datasheet', 'id', 'title', '']
+            parts = re.split(r'\[|\]\.\[|\]', ch)
+            if len(parts) >= 4 and parts[2] == cid:
+                match = ch
+                break
+        
+        if not match:
+            results[f"error_{cid}"] = f"未找到章节号 {cid}"
+            continue
+            
+        results[cid] = await _read_chapter_file(datasheet_name, match, start_line, line_limit)
         
     return results
+
+def _get_chapter_info(filename):
+    # Filename structure: [datasheet].[id].[title]
+    # Example: [stm32f103].[1.1].[introduction]
+    parts = re.split(r'\[|\]\.\[|\]', filename)
+    # Result: ['', 'datasheet', 'id', 'title', '']
+    
+    if len(parts) >= 4:
+        return {
+            "id": parts[2],
+            "title": parts[3]
+        }
+    return {"id": filename, "title": filename}
 
 @mcp.tool()
 async def search_in_datasheet(
@@ -151,7 +165,7 @@ async def search_in_datasheet(
     page_size: int = 20,
     context_length: int = 200
 ) -> dict:
-    """在 datasheet 中通过关键字搜索定位。用于初步查找寄存器、功能描述或协议细节，是查找信息的首选工具。"""
+    """在 datasheet 中通过精确字符串匹配工具对关键字进行搜索定位。用于初步查找寄存器名称、功能描述或协议细节(使用: ARR, 6301, SPI, 使用: TIM1_ARR, Timing, 0x6301, 6301h register info)，是在datasheet精确查找信息或术语的首选工具。"""
     
     all_matches = []
     
@@ -183,8 +197,10 @@ async def search_in_datasheet(
                 
                 context = content[start:end].replace('\n', ' ')
                 
+                info = _get_chapter_info(name)
                 all_matches.append({
-                    "chapter": name,
+                    "chapter_id": info["id"],
+                    "chapter_title": info["title"],
                     "context": f"...{context}..."
                 })
         except Exception as e:
