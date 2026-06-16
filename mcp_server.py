@@ -10,7 +10,7 @@ import re
 from mcp.server.fastmcp import FastMCP
 
 # 初始化 MCP 服务器
-VERSION = "1.3.2"
+VERSION = "1.3.3"
 mcp = FastMCP(f"carrot-datasheet-mcp")
 
 @mcp.tool()
@@ -165,7 +165,7 @@ async def search_in_datasheet(
     page_size: int = 20,
     context_length: int = 200
 ) -> dict:
-    """在 datasheet 中通过精确字符串匹配工具对关键字进行搜索定位。用于初步查找寄存器名称、功能描述或协议细节(使用: ARR, 6301, SPI, 使用: TIM1_ARR, Timing, 0x6301, 6301h register info)，是在datasheet精确查找信息或术语的首选工具。"""
+    """在 datasheet 中通过精确字符串匹配工具对关键字进行Ctrl-F形式的搜索定位。用于初步查找寄存器名称、功能描述或协议细节(无法进行模糊搜索或启发式搜索，必须使用单词匹配: ARR, 6301, SPI, 不要使用多词匹配: TIM1_ARR, Timing, 0x6301, 6301h register info)，是在datasheet精确查找信息或术语的首选工具。"""
     
     all_matches = []
     
