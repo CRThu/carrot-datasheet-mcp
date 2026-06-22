@@ -47,6 +47,10 @@ param(
     [Alias('l')]
     [int]$level = 2,
 
+    [Alias('m')]
+    [ValidateSet("pymupdf", "markitdown")]
+    [string]$method = "pymupdf",
+
     # 添加帮助开关
     [Alias('h', '?')]
     [Switch]$Help
@@ -75,11 +79,13 @@ if (-not (Get-Command "uv" -ErrorAction SilentlyContinue)) {
 $inputFileInfo = Get-Item $inputFile
 $projectName = if ($outputName) { $outputName } else { $inputFileInfo.BaseName }
 
-# 创建构建目录
+# 创建构建目录（已存在则先清理，确保干净构建）
 $projectBuildDir = Join-Path $buildDir $projectName
-if (-not (Test-Path $projectBuildDir)) {
-    New-Item -ItemType Directory -Path $projectBuildDir | Out-Null
+if (Test-Path $projectBuildDir) {
+    Write-Host "构建目录已存在，清理旧文件: $projectBuildDir" -ForegroundColor Yellow
+    Remove-Item -Recurse -Force $projectBuildDir
 }
+New-Item -ItemType Directory -Path $projectBuildDir | Out-Null
 
 # 构建路径变量
 $mediaDir = Join-Path $projectBuildDir "media"
@@ -94,8 +100,12 @@ Write-Host "开始构建项目: $projectName" -ForegroundColor Cyan
 Write-Host "工作目录: $projectBuildDir"
 
 # 转换流程
-Write-Host "1. 转换为 Markdown..." -ForegroundColor Yellow
-uv run pdf2md_pymupdf4llm.py $targetFilePath $intermediateMdPath $mediaDir
+Write-Host "1. 转换为 Markdown (引擎: $method)..." -ForegroundColor Yellow
+$converterScript = switch ($method) {
+    "markitdown" { "pdf2md_markitdown.py" }
+    default { "pdf2md_pymupdf4llm.py" }
+}
+uv run $converterScript $targetFilePath $intermediateMdPath $mediaDir
 if ($LASTEXITCODE -ne 0) { Write-Host "错误: 转换 Markdown 失败" -ForegroundColor Red; exit 1 }
 
 Write-Host "2. 处理 EMF 图片..." -ForegroundColor Yellow
@@ -111,7 +121,12 @@ Write-Host "4. 合并结果到主文档..." -ForegroundColor Yellow
 $fullReleaseDir = Join-Path $PSScriptRoot $releaseDir
 if (-not (Test-Path $fullReleaseDir)) { New-Item -ItemType Directory -Path $fullReleaseDir | Out-Null }
 
+# 清理当前项目旧的输出文件（主 md + 切分目录）
 $finalMdPath = Join-Path $fullReleaseDir "$projectName.md"
+$splitDir = Join-Path $fullReleaseDir $projectName
+if (Test-Path $finalMdPath) { Remove-Item -Force $finalMdPath }
+if (Test-Path $splitDir) { Remove-Item -Recurse -Force $splitDir }
+
 uv run merge_images.py --input_md $intermediateMdPath --info_md $mediaInfoPath --output_md $finalMdPath
 if ($LASTEXITCODE -ne 0) { Write-Host "错误: 文档合并失败" -ForegroundColor Red; exit 1 }
 

@@ -46,4 +46,10 @@ if __name__ == "__main__":
     parser.add_argument('--output_md', default='../../ds/pandoc_final.md')
     args = parser.parse_args()
 
+    if not os.path.exists(args.info_md) or os.path.getsize(args.info_md) == 0:
+        print(f"info_md 文件不存在或为空，跳过图片解析内容合并")
+        import shutil
+        shutil.copy2(args.input_md, args.output_md)
+        exit(0)
+
     insert_image_info(args.input_md, args.info_md, args.output_md)

@@ -29,7 +29,8 @@ if proxy:
 
 api_key = os.getenv("GOOGLE_API_KEY")
 if not api_key:
-    raise ValueError("未在 .env 文件中找到 GOOGLE_API_KEY")
+    print("警告: 未在 .env 文件中找到 GOOGLE_API_KEY，跳过多模态图片解析")
+    exit(0)
 client = genai.Client(api_key=api_key)
 
 def analyze_image(image_path, max_retries=10):
@@ -81,7 +82,8 @@ def analyze_image(image_path, max_retries=10):
                 print(f"遇到错误: {e}，正在重试 ({attempt + 1}/{max_retries})... 等待 {wait} 秒")
                 time.sleep(wait)
                 continue
-            raise e
+            print(f"解析失败，已重试 {max_retries} 次: {e}")
+            return None
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -99,6 +101,9 @@ if __name__ == "__main__":
             print(f"正在解析: {img_file}")
             try:
                 result = analyze_image(img_file)
+                if result is None:
+                    print(f"跳过 {img_file}（无可用结果）")
+                    continue
 
                 # 将 markdown 标题行替换为粗体，防止 split_md.py 切分章节
                 # 将 # Title 替换为 **Title**
