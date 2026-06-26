@@ -51,6 +51,8 @@ param(
     [ValidateSet("pymupdf", "markitdown")]
     [string]$method = "pymupdf",
 
+    [Switch]$Force,
+
     # 添加帮助开关
     [Alias('h', '?')]
     [Switch]$Help
@@ -79,11 +81,22 @@ if (-not (Get-Command "uv" -ErrorAction SilentlyContinue)) {
 $inputFileInfo = Get-Item $inputFile
 $projectName = if ($outputName) { $outputName } else { $inputFileInfo.BaseName }
 
-# 创建构建目录（已存在则先清理，确保干净构建）
+# 创建构建目录（已存在则先清理，确保干净构建，但保留 media_info.md）
 $projectBuildDir = Join-Path $buildDir $projectName
 if (Test-Path $projectBuildDir) {
+    $mediaInfoBackup = $null
+    $mediaInfoPath = Join-Path $projectBuildDir "media_info.md"
+    if ((Test-Path $mediaInfoPath) -and -not $Force) {
+        $mediaInfoBackup = Join-Path $buildDir "media_info_backup.md"
+        Copy-Item $mediaInfoPath $mediaInfoBackup -Force
+    }
     Write-Host "构建目录已存在，清理旧文件: $projectBuildDir" -ForegroundColor Yellow
     Remove-Item -Recurse -Force $projectBuildDir
+    if ($mediaInfoBackup) {
+        New-Item -ItemType Directory -Path $projectBuildDir -Force | Out-Null
+        Copy-Item $mediaInfoBackup $mediaInfoPath -Force
+        Remove-Item $mediaInfoBackup -Force
+    }
 }
 New-Item -ItemType Directory -Path $projectBuildDir | Out-Null
 
@@ -113,8 +126,12 @@ uv run convert_emf.py --media_dir $mediaDir
 if ($LASTEXITCODE -ne 0) { Write-Host "错误: EMF 图片处理失败" -ForegroundColor Red; exit 1 }
 
 Write-Host "3. 多模态图片解析..." -ForegroundColor Yellow
-uv run analyze_image.py --media_dir $mediaDir --output_md $mediaInfoPath
-if ($LASTEXITCODE -ne 0) { Write-Host "错误: 多模态解析失败" -ForegroundColor Red; exit 1 }
+if ($Force -or -not (Test-Path $mediaInfoPath)) {
+    uv run analyze_image.py --media_dir $mediaDir --output_md $mediaInfoPath
+    if ($LASTEXITCODE -ne 0) { Write-Host "错误: 多模态解析失败" -ForegroundColor Red; exit 1 }
+} else {
+    Write-Host "   [跳过] media_info.md 已存在 (用 --force 重新解析)" -ForegroundColor DarkGray
+}
 
 Write-Host "4. 合并结果到主文档..." -ForegroundColor Yellow
 # 确保输出目录存在
