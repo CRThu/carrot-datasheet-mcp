@@ -35,6 +35,7 @@ def convert_pdf_to_md(pdf_path: str, output_md: str, media_dir: str | None = Non
     pipeline_options = PdfPipelineOptions(
         do_ocr=ocr,
         do_table_structure=True,
+        do_formula_enrichment=True,
         ocr_options=ocr_options,
     )
     if media_dir:
